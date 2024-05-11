@@ -32,9 +32,6 @@ namespace WebApi___Sec3.Controllers
             _mapper = mapper;
         }
 
-
-
-
         [HttpGet("produtos")]
         [Authorize]
         public async Task<ActionResult<IEnumerable<CategoriaDTO>>> Get()

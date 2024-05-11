@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Azure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +80,7 @@ namespace WebApi___Sec3.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async  Task<ActionResult<IEnumerable<ProdutoDTO>>> Get()
         {
 
