@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using WebApi___Sec3.Context;
@@ -33,7 +35,8 @@ namespace WebApi___Sec3.Controllers
         }
 
         [HttpGet("produtos")]
-        [Authorize]
+        //[Authorize]
+        [DisableRateLimiting]
         public async Task<ActionResult<IEnumerable<CategoriaDTO>>> Get()
         {
 
@@ -175,6 +178,7 @@ namespace WebApi___Sec3.Controllers
 
 
         [HttpDelete("{id:int}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<CategoriaDTO>> Delete(int id)
         {
             var categoria = await _uof.CategoriaRepository.GetAsync(c => c.CategoriaId == id);

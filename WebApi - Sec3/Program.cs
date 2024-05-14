@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using WebApi___Sec3.Context;
 using WebApi___Sec3.DTOs.Mappings;
 using WebApi___Sec3.Extensions;
@@ -27,6 +29,18 @@ builder.Services.AddControllers(options =>
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 }).AddNewtonsoftJson();
 
+
+
+
+builder.Services.AddCors(options =>
+    options.AddPolicy("OrigensComAcessoPermitido",
+    policy =>
+    {
+        policy.WithOrigins("http://localhost:xxxx")
+        .WithMethods("GET", "POST")
+        .AllowAnyHeader();
+    })
+);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -56,13 +70,6 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
-
-
-
-
-
-
-
 });
 
 
@@ -101,10 +108,56 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization(options =>
+{
+options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("Admin").RequireClaim("id", "cleison"));
+options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
 
+options.AddPolicy("ExclusivePolicyOnly", policy =>
+    policy.RequireAssertion(context =>
+    context.User.HasClaim(claim =>
+                        claim.Type == "id" && claim.Value == "cleison")
+                        || context.User.IsInRole("SuperAdmin")));
+    });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
            options.UseSqlServer(sqlConnection));
+
+
+
+builder.Services.AddRateLimiter(rateLimiterOptions =>
+{
+    rateLimiterOptions.AddFixedWindowLimiter(policyName: "fixedWindow", options =>
+    {
+        options.PermitLimit = 1; //Uma requisicação
+        options.Window = TimeSpan.FromSeconds(5); // A cada cinco segundos
+        options.QueueLimit = 2; //Nao vai enfileirar
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+    rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
+//Configurando taxa global
+builder.Services.AddRateLimiter(options =>
+{
+    //Usando limite particionado, baseado no contexto http
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpcontext => 
+                            RateLimitPartition.GetFixedWindowLimiter(
+                                                partitionKey: httpcontext.User.Identity?.Name ??//Tenta usar o usuario ou o host como usauri de contexto
+                                                              httpcontext.Request.Headers.Host.ToString(),
+                                                factory: partition => new FixedWindowRateLimiterOptions
+                                                {
+                                                    AutoReplenishment = true,
+                                                    PermitLimit = 5,
+                                                    QueueLimit = 0,
+                                                    Window = TimeSpan.FromSeconds(10)
+                                                }));
+});
+
+
+
 
 
 builder.Services.AddScoped<ApiLoggingFilter>();
@@ -118,7 +171,7 @@ builder.Logging.AddProvider(new CustomLoggerProvider(new CustomLoggerProviderCon
 {
     LogLevel = LogLevel.Information,
 }));
-  
+
 builder.Services.AddAutoMapper(typeof(ProdutoDTOMappingProfile));
 
 var app = builder.Build();
@@ -132,6 +185,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+
+
+app.UseRateLimiter();
+app.UseCors();
 
 app.UseAuthorization();
 

@@ -80,7 +80,7 @@ namespace WebApi___Sec3.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Policy = "UserOnly")]
         public async  Task<ActionResult<IEnumerable<ProdutoDTO>>> Get()
         {
 
