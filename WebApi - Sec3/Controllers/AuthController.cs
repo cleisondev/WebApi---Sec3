@@ -13,6 +13,7 @@ namespace WebApi___Sec3.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[ApiExplorerSettings(IgnoreApi = true)]
     public class AuthController : ControllerBase
     {
         private readonly ITokenService _tokenService;

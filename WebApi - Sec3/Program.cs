@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -110,16 +111,16 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("Admin").RequireClaim("id", "cleison"));
-options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("Admin").RequireClaim("id", "cleison"));
+    options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
 
-options.AddPolicy("ExclusivePolicyOnly", policy =>
-    policy.RequireAssertion(context =>
-    context.User.HasClaim(claim =>
-                        claim.Type == "id" && claim.Value == "cleison")
-                        || context.User.IsInRole("SuperAdmin")));
-    });
+    options.AddPolicy("ExclusivePolicyOnly", policy =>
+        policy.RequireAssertion(context =>
+        context.User.HasClaim(claim =>
+                            claim.Type == "id" && claim.Value == "cleison")
+                            || context.User.IsInRole("SuperAdmin")));
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
            options.UseSqlServer(sqlConnection));
@@ -143,7 +144,7 @@ builder.Services.AddRateLimiter(options =>
 {
     //Usando limite particionado, baseado no contexto http
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpcontext => 
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpcontext =>
                             RateLimitPartition.GetFixedWindowLimiter(
                                                 partitionKey: httpcontext.User.Identity?.Name ??//Tenta usar o usuario ou o host como usauri de contexto
                                                               httpcontext.Request.Headers.Host.ToString(),
@@ -157,6 +158,19 @@ builder.Services.AddRateLimiter(options =>
 });
 
 
+builder.Services.AddApiVersioning(o =>
+{
+    o.DefaultApiVersion = new ApiVersion(1, 0);//Versão padrão
+    o.AssumeDefaultVersionWhenUnspecified = true;//Quando nao especificar a versao, usar a padrao
+    o.ReportApiVersions = true;//Versao da api vai no header do response
+    o.ApiVersionReader = ApiVersionReader.Combine(
+                            new QueryStringApiVersionReader(),
+                            new UrlSegmentApiVersionReader());
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";//Formato na documentação
+    options.SubstituteApiVersionInUrl = true;//Substiuir versao da api na url ao gerar links pra diferentes versoes da api
+});
 
 
 

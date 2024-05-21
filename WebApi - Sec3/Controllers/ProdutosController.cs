@@ -18,6 +18,7 @@ namespace WebApi___Sec3.Controllers
 {
     [Route("[controller]")]
     [ApiController]
+    //[ApiExplorerSettings(IgnoreApi = true)]
     public class ProdutosController : ControllerBase
     {
         private readonly IUnitOfWork _uof;
@@ -43,7 +44,7 @@ namespace WebApi___Sec3.Controllers
         }
 
         [HttpGet("pagination")]
-        public async  Task<ActionResult<IEnumerable<ProdutoDTO>>> Get([FromQuery] ProdutosParameters produtosParameters)
+        public async Task<ActionResult<IEnumerable<ProdutoDTO>>> Get([FromQuery] ProdutosParameters produtosParameters)
         {
             var produtos = await _uof.ProdutoRepository.GetProdutosAsync(produtosParameters);
 
@@ -81,7 +82,10 @@ namespace WebApi___Sec3.Controllers
 
         [HttpGet]
         [Authorize(Policy = "UserOnly")]
-        public async  Task<ActionResult<IEnumerable<ProdutoDTO>>> Get()
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<ProdutoDTO>>> Get()
         {
 
             var produtos = await _uof.ProdutoRepository.GetAllAsync();
@@ -98,10 +102,17 @@ namespace WebApi___Sec3.Controllers
         }
 
 
-
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpGet("{id:int:min(1)}", Name = "ObterProduto")]
-        public async Task<ActionResult<ProdutoDTO>> GetId(int id)
+        public async Task<ActionResult<ProdutoDTO>> GetId(int? id)
         {
+
+            if (id == null || id < 0)
+            {
+                return BadRequest("Id de produto inválido");
+            }
 
             var produto = await _uof.ProdutoRepository.GetAsync(c => c.ProdutoId == id);
 
@@ -115,6 +126,8 @@ namespace WebApi___Sec3.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<ProdutoDTO>> Post(ProdutoDTO produtoDTO)
         {
 
@@ -162,6 +175,9 @@ namespace WebApi___Sec3.Controllers
 
 
         [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesDefaultResponseType]
         public async Task<ActionResult<ProdutoDTO>> Put(int id, ProdutoDTO produtoDto)
         {
             if (id != produtoDto.ProdutoId)
@@ -181,12 +197,13 @@ namespace WebApi___Sec3.Controllers
 
 
         [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ProdutoDTO>> Delete(int id)
         {
             var produto = await _uof.ProdutoRepository.GetAsync(c => c.ProdutoId == id);
 
             if (produto is null)
-                return NotFound();
+                return NotFound("produto nao encontrado");
 
             var produtoDeletado = _uof.ProdutoRepository.Delete(produto);
             await _uof.CommitAsync();

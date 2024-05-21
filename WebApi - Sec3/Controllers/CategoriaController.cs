@@ -20,6 +20,7 @@ namespace WebApi___Sec3.Controllers
 {
     [Route("[controller]")]
     [ApiController]
+    //[ApiExplorerSettings(IgnoreApi = true)]
     public class CategoriaController : ControllerBase
     {
         private readonly IUnitOfWork _uof; 
